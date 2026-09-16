@@ -8,14 +8,15 @@ import com.novelreader.settings.RenderMode;
 import java.util.function.Supplier;
 
 /**
- * 按设置把渲染分发到「通知」「面板」或「两者」。
+ * 按设置把渲染分发到「通知」或「面板」。
  *
  * <p>{@link ReaderManager} 只认识这一个 {@link ReaderPresenter}，因此<b>加面板时它一行都不用改</b>
  * —— 这正是 P2 抽出 presenter 抽象的目的。
  *
  * <h3>各方法的分发规则（有取舍，不是随手写的）</h3>
  * <ul>
- *   <li>{@link #present} —— 严格按模式：通知模式不碰面板，面板模式不发正文通知；</li>
+ *   <li>{@link #present} —— 严格按模式：通知模式不碰面板，面板模式不发正文通知
+ *       （正文只在一个地方出现，避免同一段读两遍）；</li>
  *   <li>{@link #info} / {@link #error} —— <b>通知与面板都发</b>。通知负责留痕（Event Log
  *       不弹窗、不打扰），面板负责让人<b>当场看见</b>；面板不存在时那边自然什么都不做；</li>
  *   <li>{@link #status} —— <b>只给面板</b>。「正在加载…」这类进度是转瞬即逝的当前状态，

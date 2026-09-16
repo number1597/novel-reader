@@ -36,8 +36,18 @@ import java.nio.file.Path;
 /**
  * 设置页：Settings / Preferences → Tools → Novel Reader。
  *
- * <p>可配置规则文件路径、每段最大字数、请求超时与失败重试次数，
- * 并提供「打开规则文件」「重新加载规则」两个便利按钮。
+ * <p>可配置规则文件路径、每段最大字数、请求超时与失败重试次数、渲染方式与面板排版，
+ * 并提供「打开规则文件」「编辑规则…」「重新加载规则」三个便利按钮。
+ *
+ * <p><b>规则文件路径默认值直接显示在输入框里</b>：留空虽然等价于「用默认位置」，
+ * 但一个空输入框既让人看不出文件在哪，也看不出「留空」是什么意思。
+ * 保存时会把「与默认位置等价」的路径归一化回空串（见
+ * {@link NovelReaderSettings#normalizeRulesPath(String, Path)}），
+ * 这样 XML 里保留的仍是「跟随默认」语义。
+ *
+ * <p><b>正文相关的项跟着渲染方式走</b>：「每段最大字数」只对通知模式有意义
+ * （面板整章展示，不切段），字号与行距只对面板有意义。不生效的那些会被置灰并给出说明 ——
+ * 否则最容易的结果是「改了没反应，然后怀疑插件坏了」。
  *
  * <p><b>这里没有 User-Agent 设置</b>：UA 是站点级属性（有的站会拉黑浏览器 UA，
  * 有的站反之），只能在规则文件里按站配置（{@code NovelRule.userAgent}），
@@ -54,6 +64,8 @@ public class NovelReaderConfigurable implements Configurable {
     private JSpinner timeoutSpinner;
     private JSpinner retriesSpinner;
     private JComboBox<RenderMode> renderModeBox;
+    /** 随渲染方式变化的一句话说明，解释哪些项在当前模式下不生效。 */
+    private JBLabel modeHintLabel;
     private JSpinner fontSizeSpinner;
     /** 行距是小数（1.0~3.0，步进 0.1），用能装小数的 Spinner 模型。 */
     private JSpinner lineSpacingSpinner;
@@ -86,6 +98,10 @@ public class NovelReaderConfigurable implements Configurable {
                 NovelReaderSettings.MAX_ALLOWED_RETRIES, 1));
         // RenderMode 重写了 toString()，下拉框无需自定义渲染器即可显示中文名
         renderModeBox = new JComboBox<>(RenderMode.values());
+        // 切换渲染方式时立刻反映到下方哪些项可用，不必点「应用」
+        renderModeBox.addActionListener(e -> updateModeDependentRows());
+        modeHintLabel = new JBLabel();
+        modeHintLabel.setForeground(JBColor.GRAY);
         fontSizeSpinner = new JSpinner(new SpinnerNumberModel(
                 NovelReaderSettings.DEFAULT_FONT_SIZE,
                 NovelReaderSettings.MIN_FONT_SIZE,
@@ -121,10 +137,13 @@ public class NovelReaderConfigurable implements Configurable {
         mainPanel = FormBuilder.createFormBuilder()
                 .addLabeledComponent("规则文件（JSON）：", rulesPathField)
                 .addComponent(buttons)
-                .addLabeledComponent("每段最大字数：", maxCharsSpinner)
                 .addLabeledComponent("请求超时（毫秒）：", timeoutSpinner)
                 .addLabeledComponent("失败重试次数：", retriesSpinner)
+                // 正文相关的三项收在「渲染方式」一起：它们是同一条选择的两个分支，
+                // 分散在页面两端时，「哪些项在当前模式下生效」就看不出来了。
                 .addLabeledComponent("渲染方式：", renderModeBox)
+                .addComponent(modeHintLabel)
+                .addLabeledComponent("每段最大字数：", maxCharsSpinner)
                 .addLabeledComponent("正文字号：", fontSizeSpinner)
                 .addLabeledComponent("正文行距：", lineSpacingSpinner)
                 .addSeparator()
@@ -140,7 +159,9 @@ public class NovelReaderConfigurable implements Configurable {
     @Override
     public boolean isModified() {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
-        return !rulesPath().equals(settings.getRulesPath())
+        // 用归一化后的值比较：输入框里预填的是「当前生效路径」，默认位置就是它，
+        // 直接拿原文比较会让「什么都没改」也显示成已修改。
+        return !normalizedRulesPath().equals(settings.getRulesPath())
                 || intValue(maxCharsSpinner) != settings.getMaxCharsPerPage()
                 || intValue(timeoutSpinner) != settings.getRequestTimeoutMs()
                 || intValue(retriesSpinner) != settings.getMaxRetries()
@@ -153,7 +174,8 @@ public class NovelReaderConfigurable implements Configurable {
     @Override
     public void apply() {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
-        settings.setRulesPath(rulesPath());
+        settings.setRulesPath(normalizedRulesPath());
+        // 不生效的那些项也照常保存：用户切到另一种渲染方式时，之前调好的值还在
         settings.setMaxCharsPerPage(intValue(maxCharsSpinner));
         settings.setRequestTimeoutMs(intValue(timeoutSpinner));
         settings.setMaxRetries(intValue(retriesSpinner));
@@ -179,7 +201,8 @@ public class NovelReaderConfigurable implements Configurable {
     public void reset() {
         NovelReaderSettings settings = NovelReaderSettings.getInstance();
         if (rulesPathField != null) {
-            rulesPathField.setText(settings.getRulesPath());
+            // 显示「当前生效路径」而不是空的 state 值：默认位置也一并显示出来
+            rulesPathField.setText(settings.getRulesFile().toString());
         }
         if (maxCharsSpinner != null) {
             maxCharsSpinner.setValue(settings.getMaxCharsPerPage());
@@ -202,6 +225,7 @@ public class NovelReaderConfigurable implements Configurable {
         if (cacheEnabledBox != null) {
             cacheEnabledBox.setSelected(settings.isCacheEnabled());
         }
+        updateModeDependentRows();
         updateCacheInfo();
         setStatus("", false);
     }
@@ -214,12 +238,40 @@ public class NovelReaderConfigurable implements Configurable {
         timeoutSpinner = null;
         retriesSpinner = null;
         renderModeBox = null;
+        modeHintLabel = null;
         fontSizeSpinner = null;
         lineSpacingSpinner = null;
         cacheEnabledBox = null;
         clearCacheButton = null;
         cacheInfoLabel = null;
         statusLabel = null;
+    }
+
+    /**
+     * 让「只对当前渲染方式有意义」的项跟着渲染方式走。
+     *
+     * <p>「每段最大字数」只在通知模式生效（面板整章展示，不切段）；
+     * 字号与行距只对面板生效。一直显示成可编辑最容易的后果是
+     * 「改了没反应，然后怀疑插件坏了」，所以不生效的那些直接置灰，
+     * 并用一句话说明为什么 —— 而不是留个空输入框让人猜。
+     */
+    private void updateModeDependentRows() {
+        RenderMode mode = selectedRenderMode();
+        setRowEnabled(maxCharsSpinner, mode.includesNotification());
+        setRowEnabled(fontSizeSpinner, mode.includesPanel());
+        setRowEnabled(lineSpacingSpinner, mode.includesPanel());
+
+        if (modeHintLabel != null) {
+            modeHintLabel.setText(mode.includesPanel()
+                    ? "专用面板整章展示：字号与行距生效，「每段最大字数」不生效。"
+                    : "通知逐段推送：只受「每段最大字数」影响，字号与行距不生效。");
+        }
+    }
+
+    private static void setRowEnabled(JComponent component, boolean enabled) {
+        if (component != null) {
+            component.setEnabled(enabled);
+        }
     }
 
     // ---------- 按钮行为 ----------
@@ -382,6 +434,18 @@ public class NovelReaderConfigurable implements Configurable {
     private String rulesPath() {
         return rulesPathField == null || rulesPathField.getText() == null
                 ? "" : rulesPathField.getText().trim();
+    }
+
+    /**
+     * 输入框内容归一化后的规则路径：与默认位置等价时返回空串。
+     *
+     * <p>{@code apply} 与 {@code isModified} 都必须走这里 ——
+     * 输入框预填的是「生效路径」，默认位置就是它，
+     * 直接拿原文比较会让「什么都没改」也显示成已修改。
+     */
+    private String normalizedRulesPath() {
+        return NovelReaderSettings.normalizeRulesPath(
+                rulesPath(), NovelReaderSettings.defaultRulesFile());
     }
 
     /** 下拉框当前选中的渲染方式；未选中时退回默认值。 */

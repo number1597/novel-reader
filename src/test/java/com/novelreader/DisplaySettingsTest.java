@@ -4,6 +4,7 @@ import com.novelreader.settings.NovelReaderSettings;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * 阅读面板的显示设置：字号与行距。
@@ -16,6 +17,18 @@ import static org.junit.Assert.assertEquals;
  * 按钮的灰/亮状态就会漂。
  */
 public class DisplaySettingsTest {
+
+    @Test
+    public void panelDefaultsAreFourteenPointFontAndOnePointFiveLineSpacing() {
+        // 这两个数是产品默认值，写在测试里是为了让「有人顺手改了默认值」当场暴露：
+        // 它们直接决定面板第一眼的观感，改动应当是有意的。
+        assertEquals("面板默认字号", 14, NovelReaderSettings.DEFAULT_FONT_SIZE);
+        assertEquals("面板默认行距", 1.5f, NovelReaderSettings.DEFAULT_LINE_SPACING, 0.0001f);
+
+        NovelReaderSettings fresh = new NovelReaderSettings();
+        assertEquals("全新安装就该是 14 号", 14, fresh.getFontSize());
+        assertEquals("全新安装就该是 1.5 倍行距", 1.5f, fresh.getLineSpacing(), 0.0001f);
+    }
 
     @Test
     public void lineSpacingHasSaneDefault() {
@@ -57,13 +70,17 @@ public class DisplaySettingsTest {
     public void repeatedStepsDoNotAccumulateFloatNoise() {
         NovelReaderSettings settings = new NovelReaderSettings();
         settings.setLineSpacing(NovelReaderSettings.DEFAULT_LINE_SPACING);
+        float start = settings.getLineSpacing();
 
         for (int i = 0; i < 5; i++) {
             settings.setLineSpacing(settings.getLineSpacing() + NovelReaderSettings.LINE_SPACING_STEP);
         }
 
-        assertEquals("连点 5 次「行距+」应当正好停在 2.1", 2.1f,
-                settings.getLineSpacing(), 0.0001f);
+        // 这里刻意用「精确相等」而不是带容差的比较：要证明的正是「一点浮点噪声都没有」。
+        // 收敛到一位小数后 2.0f 是可精确表示的，所以必须严格相等 ——
+        // 带容差的话 2.0000000000000004 这种值会被放过，"到没到头"的比较照样会漂。
+        assertTrue("连点 5 次「行距+」应正好停在起点 + 0.5，实际是 " + settings.getLineSpacing(),
+                settings.getLineSpacing() == start + NovelReaderSettings.LINE_SPACING_STEP * 5);
     }
 
     @Test

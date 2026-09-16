@@ -48,7 +48,7 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     public static final int FONT_SIZE_STEP = 1;
 
     /** 默认正文行距倍数（行高 = 字体行高 × 该值）。 */
-    public static final float DEFAULT_LINE_SPACING = 1.6f;
+    public static final float DEFAULT_LINE_SPACING = 1.5f;
 
     /** 允许的行距范围：1.0 = 不额外放大，3.0 = 三倍行高。 */
     public static final float MIN_LINE_SPACING = 1.0f;
@@ -68,11 +68,14 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
         /** 网络抖动时的最大重试次数；0 表示不重试。 */
         public int maxRetries = DEFAULT_MAX_RETRIES;
         /**
-         * 正文渲染方式：NOTIFICATION / PANEL / BOTH。
+         * 正文渲染方式：NOTIFICATION（通知）/ PANEL（专用面板）。
          *
          * <p>刻意<b>存字符串而不是枚举</b>：避开 {@code @State} 序列化对枚举的处理细节，
          * 与既有的 encoding 等字符串字段风格一致；解析失败一律退回默认值
          * （见 {@link RenderMode#parse(String)}）。
+         *
+         * <p>早期版本还有第三种取值 {@code BOTH}（两者同时），现已取消 ——
+         * 老 XML 里读到它会映射到面板模式，见 {@link RenderMode#LEGACY_BOTH}。
          */
         public String renderMode = RenderMode.DEFAULT.name();
         /** 阅读面板的字号。 */
@@ -115,6 +118,40 @@ public class NovelReaderSettings implements PersistentStateComponent<NovelReader
     /** 规则 JSON 的默认位置：{IDEA 配置目录}/novelReader/rules.json。 */
     public static Path defaultRulesFile() {
         return Paths.get(PathManager.getConfigPath(), "novelReader", "rules.json");
+    }
+
+    /**
+     * 把「与默认位置等价」的规则文件路径归一化为空串。
+     *
+     * <p>设置页会把<b>当前生效的路径直接显示在输入框里</b>（否则用户根本看不到文件在哪、
+     * 也不知道「留空」意味着什么）；但真正写进 XML 的仍然是空串 ——
+     * 空串的语义是「跟随默认」，这样将来 IDEA 换配置目录（升级、换机器）能自动跟上，
+     * 而不是钉死一个可能已经不存在的绝对路径。
+     *
+     * <p>比较前统一 {@code toAbsolutePath().normalize()}，所以分隔符写成 {@code /}、
+     * 多一个 {@code .}、大小写不同都能正确识别为同一个位置。
+     *
+     * @param raw         输入框里的原文，可为 null
+     * @param defaultFile 当前平台的默认规则文件位置，可为 null（此时原样返回）
+     */
+    public static String normalizeRulesPath(String raw, Path defaultFile) {
+        if (raw == null) {
+            return "";
+        }
+        String text = raw.trim();
+        if (text.isEmpty() || defaultFile == null) {
+            return text;
+        }
+        try {
+            if (Paths.get(text).toAbsolutePath().normalize()
+                    .equals(defaultFile.toAbsolutePath().normalize())) {
+                return "";
+            }
+        } catch (RuntimeException ignored) {
+            // 路径含非法字符（例如用户手打了个 "*"）：原样留着，让后面用的时候去报错，
+            // 而不是在这里把它悄悄变成「跟随默认」——那样用户会以为自己的配置生效了。
+        }
+        return text;
     }
 
     /** 当前生效的规则文件路径。 */

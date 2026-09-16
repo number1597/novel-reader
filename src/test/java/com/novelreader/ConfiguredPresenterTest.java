@@ -101,18 +101,6 @@ public class ConfiguredPresenterTest {
     }
 
     @Test
-    public void bothModeDrivesBothTargets() {
-        RecordingPresenter notification = new RecordingPresenter("通知");
-        RecordingPresenter panel = new RecordingPresenter("面板");
-        ConfiguredPresenter presenter = presenterFor(RenderMode.BOTH, notification, panel);
-
-        presenter.present(null, null);
-
-        assertEquals(1, notification.count("present"));
-        assertEquals(1, panel.count("present"));
-    }
-
-    @Test
     public void infoAndErrorReachBothTargetsInEveryMode() {
         // 通知负责留痕（Event Log 不弹窗、不打扰），面板负责让人**当场看见** —— 两个都要有。
         // 早期版本只发通知，后果就是「在面板里点下一章、加载失败却什么都没看到」：
@@ -165,10 +153,10 @@ public class ConfiguredPresenterTest {
         assertEquals("切到面板模式后不该再发通知", 1, notification.count("present"));
         assertEquals("切换应当立即生效，无需重启", 1, panel.count("present"));
 
-        mode.set(RenderMode.BOTH);
+        mode.set(RenderMode.NOTIFICATION);
         presenter.present(null, null);
-        assertEquals(2, notification.count("present"));
-        assertEquals(2, panel.count("present"));
+        assertEquals("切回通知模式后要恢复发通知", 2, notification.count("present"));
+        assertEquals("切回通知模式后不该再动面板", 1, panel.count("present"));
     }
 
     @Test
@@ -203,7 +191,7 @@ public class ConfiguredPresenterTest {
     public void statusGoesToPanelOnly() {
         RecordingPresenter notification = new RecordingPresenter("通知");
         RecordingPresenter panel = new RecordingPresenter("面板");
-        ConfiguredPresenter presenter = presenterFor(RenderMode.BOTH, notification, panel);
+        ConfiguredPresenter presenter = presenterFor(RenderMode.PANEL, notification, panel);
 
         presenter.status(null, "正在加载《第2章》…");
 

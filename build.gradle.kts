@@ -17,7 +17,8 @@ dependencies {
     intellijPlatform {
         // 直接复用本机安装的 IntelliJ IDEA 2026.1.3 作为目标平台，无需下载平台制品。
         // 若需改为远程平台，替换为：intellijIdea("2026.1")
-        local("D:/java/idea")
+//        local("D:/java/idea")
+        intellijIdea("2026.1")
     }
 
     // jsoup 由 IntelliJ 平台自带（D:\java\idea\lib\intellij.libraries.jsoup.jar），
@@ -61,8 +62,8 @@ intellijPlatform {
             首个版本：
             <ul>
               <li>按自定义 JSON 规则在线解析小说目录与章节正文</li>
-              <li>正文可输出到通知，也可输出到右侧专用阅读面板（整章滚动 + 当前段高亮），
-                  两种方式可切换</li>
+              <li>正文可输出到通知（逐段推送），也可输出到右侧专用阅读面板
+                  （一次显示整章、可滚动可复制、字号与行距可随时调），两种方式二选一</li>
               <li>带阅读历史：自动记录到「章 + 段」，关掉 IDEA 再打开仍在，可管理删除</li>
               <li>章节目录对话框：可搜索章节名或序号，打开时自动定位到当前章</li>
               <li>网络健壮性：失败重试与指数退避、多规则兜底（站点改版自愈）、自定义请求头</li>

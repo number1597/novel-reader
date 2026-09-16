@@ -52,7 +52,7 @@ public class ReaderManager {
     /** 渲染目标；默认走通知，注入点留给测试与将来的阅读面板。 */
     private final ReaderPresenter presenter;
 
-    /** 平台服务用的无参构造：按设置分发到「通知 / 面板 / 两者」（默认通知，与历史行为一致）。 */
+    /** 平台服务用的无参构造：按设置分发到「通知」或「专用面板」（默认通知，与历史行为一致）。 */
     public ReaderManager() {
         this(new ConfiguredPresenter());
     }
