@@ -1,0 +1,9 @@
+<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+  <!-- 缓存整本书：向下的箭头 + 托盘。 -->
+  <path d="M8 2.6v7.2" fill="none" stroke="#6E7B8B"
+        stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M4.8 6.9 8 10.1l3.2-3.2" fill="none" stroke="#6E7B8B"
+        stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M3.2 12.5h9.6" fill="none" stroke="#6E7B8B"
+        stroke-width="1.5" stroke-linecap="round"/>
+</svg>

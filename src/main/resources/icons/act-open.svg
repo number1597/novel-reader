@@ -1,0 +1,8 @@
+<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+  <!-- 打开：一本立着的书（与工具窗的「翻开书」区分开）。 -->
+  <path d="M5.2 2.4h5.6c.7 0 1.2.5 1.2 1.2v8.8c0 .7-.5 1.2-1.2 1.2H5.2z"
+        fill="none" stroke="#6E7B8B" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M5.2 2.4v11.2" fill="none" stroke="#6E7B8B" stroke-width="1.4"/>
+  <path d="M7.7 5.8h2.6M7.7 8.2h2.6" fill="none" stroke="#6E7B8B"
+        stroke-width="1.1" stroke-linecap="round"/>
+</svg>

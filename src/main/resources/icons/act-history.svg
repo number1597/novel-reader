@@ -1,0 +1,6 @@
+<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+  <!-- 阅读历史：时钟。 -->
+  <circle cx="8" cy="8" r="5.6" fill="none" stroke="#6E7B8B" stroke-width="1.4"/>
+  <path d="M8 4.9V8l2.3 1.7" fill="none" stroke="#6E7B8B"
+        stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

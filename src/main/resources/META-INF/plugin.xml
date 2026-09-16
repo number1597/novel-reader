@@ -1,0 +1,223 @@
+<idea-plugin>
+    <id>com.novelreader</id>
+    <name>Novel Reader</name>
+    <!-- 上架 Marketplace 要求 vendor 至少有一个可联系入口（url 或 email）。
+         请把下面的占位值替换成你自己的信息后再发布。 -->
+    <vendor url="https://github.com/novelreader/novel-reader" email="novelreader@example.com">novelreader</vendor>
+
+    <description><![CDATA[
+    按自定义 JSON 规则在线解析小说目录与章节正文，并在 IDEA 内逐段阅读，
+    方便在工作间隙阅读。<br/>
+    <ul>
+      <li>Tools → Novel Reader 菜单里粘贴小说目录页 URL，即可解析出完整章节目录并开始阅读；</li>
+      <li>正文可输出到 <b>通知</b>，也可输出到右侧<b>专用阅读面板</b>（整章滚动、当前段高亮、
+          可选中复制），两种方式可随时切换；</li>
+      <li>自动记录<b>阅读历史</b>（精确到章 + 段），关掉 IDEA 再打开依然在；</li>
+      <li><b>书签</b>：随手把当前段标记下来（可附一句备注），之后一键跳回；</li>
+      <li><b>离线缓存</b>：读过的章节自动存到本地，再读不再请求；「缓存整本书」可提前下载，
+          断网或站点打不开时也能继续阅读；</li>
+      <li>「章节目录」对话框可搜索章节名或序号，打开时自动定位到当前章；</li>
+      <li>规则文件为本地 JSON，设置页内置图形化编辑器（保存前自动备份），可随时编辑并重新加载。</li>
+    </ul>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- 正文输出所用的通知组。
+             displayType=NONE 表示默认不弹窗，消息只进 Event Log / Notifications 面板，
+             需要手动点开查看，避免阅读时反复弹气泡打断编码。
+             可选值：NONE / BALLOON / STICKY_BALLOON / TOOL_WINDOW -->
+        <notificationGroup id="NovelReader" displayType="NONE"/>
+
+        <applicationService
+                serviceImplementation="com.novelreader.settings.NovelReaderSettings"/>
+        <applicationService
+                serviceImplementation="com.novelreader.reader.ReaderManager"/>
+        <applicationService
+                serviceImplementation="com.novelreader.history.ReadingHistoryStore"/>
+        <applicationService
+                serviceImplementation="com.novelreader.bookmark.BookmarkStore"/>
+        <applicationService
+                serviceImplementation="com.novelreader.cache.ChapterCache"/>
+
+        <applicationConfigurable
+                parentId="tools"
+                instance="com.novelreader.settings.NovelReaderConfigurable"
+                id="com.novelreader.settings.NovelReaderConfigurable"
+                displayName="Novel Reader"/>
+
+        <!-- 专用阅读面板。与「通知」渲染并存，由设置项「渲染方式」决定用哪个。
+             注意：工具窗是懒创建的 —— createToolWindowContent 只在用户首次与它交互时才调用，
+             因此 ReadingPanel 会在构造时主动拉取当前会话状态（否则会白屏）。
+             图标路径以 / 开头表示从 classpath 根取，即 src/main/resources/icons/。 -->
+        <toolWindow
+                id="NovelReaderPanel"
+                icon="/icons/novelReader.svg"
+                anchor="right"
+                secondary="false"
+                factoryClass="com.novelreader.reader.ReaderToolWindowFactory"/>
+    </extensions>
+
+    <actions>
+        <!-- Tools 菜单下的父节点「Novel Reader」。
+             class 继承 ActionGroup 并在构造函数里 setPopup(true)，
+             因此它自己就是一个点开后展开的二级子菜单。
+
+             注意：它同时是一个「动作」，因此其 id 必须与下面各动作 id 处于同一命名空间，
+             用一个明显不同的名字（.ToolsMenu 后缀）避免与 NovelReader.PasteTocUrl 等冲突。 -->
+        <group id="NovelReader.ToolsMenu"
+               class="com.novelreader.action.NovelReaderActionGroup"
+               text="Novel Reader"
+               description="在线小说阅读：由 JSON 规则解析目录与正文，并通过通知逐段展示">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </group>
+
+        <!-- 虚拟分组：只作为「该动作属于本菜单」的登记处，本身不出现在任何菜单上。
+             NovelReaderActionGroup 会读取 childGroupId="NovelReader.MenuItems" 下的动作，
+             按声明顺序装进二级子菜单。 -->
+        <group id="NovelReader.MenuItems" text="Novel Reader"/>
+
+        <!-- 父节点内的各条目。
+             统一注册到虚拟分组 childGroupId="NovelReader.MenuItems"，
+             由 NovelReaderActionGroup 在构造时收集成子菜单内容；
+             顺序即此处的声明顺序。
+
+             shortcut 仍注册在 keymap 上，绑定的是动作本身，与分组无关。 -->
+        <action id="NovelReader.PasteTocUrl"
+                class="com.novelreader.action.PasteTocUrlAction"
+                icon="/icons/act-open.svg"
+                text="打开：粘贴目录URL阅读"
+                description="解析在线小说目录并开始阅读">
+            <keyboard-shortcut keymap="$default" first-keystroke="control alt N"/>
+            <add-to-group group-id="NovelReader.MenuItems" anchor="last"/>
+        </action>
+
+        <!-- 阅读历史：列出读过的书，点击继续阅读（回到上次的章 / 段），行内可删除。
+             进度由 ReaderManager 在每次翻页时自动写入，无需用户手动保存。 -->
+        <action id="NovelReader.History"
+                class="com.novelreader.action.ShowHistoryAction"
+                icon="/icons/act-history.svg"
+                text="阅读历史"
+                description="浏览读过的书并回到上次阅读的位置">
+            <keyboard-shortcut keymap="$default" first-keystroke="control alt H"/>
+            <add-to-group group-id="NovelReader.MenuItems" anchor="last"/>
+        </action>
+
+        <action id="NovelReader.NextSegment"
+                class="com.novelreader.action.NextSegmentAction"
+                icon="/icons/act-next-page.svg"
+                text="下一页"
+                description="阅读下一段；本章读完时自动加载下一章">
+            <keyboard-shortcut keymap="$default" first-keystroke="control alt PERIOD"/>
+            <add-to-group group-id="NovelReader.MenuItems" anchor="last"/>
+        </action>
+        <action id="NovelReader.PrevSegment"
+                class="com.novelreader.action.PrevSegmentAction"
+                icon="/icons/act-prev-page.svg"
+                text="上一页"
+                description="阅读上一段；本章开头时回到上一章末尾">
+            <keyboard-shortcut keymap="$default" first-keystroke="control alt COMMA"/>
+            <add-to-group group-id="NovelReader.MenuItems" anchor="last"/>
+        </action>
+
+        <action id="NovelReader.NextChapter"
+                class="com.novelreader.action.NextChapterAction"
+                icon="/icons/act-next-chapter.svg"
+                text="下一章"
+                description="直接跳到下一章的开头">
+            <keyboard-shortcut keymap="$default" first-keystroke="control alt shift PERIOD"/>
+            <add-to-group group-id="NovelReader.MenuItems" anchor="last"/>
+        </action>
+
+        <action id="NovelReader.PrevChapter"
+                class="com.novelreader.action.PrevChapterAction"
+                icon="/icons/act-prev-chapter.svg"
+                text="上一章"
+                description="直接回到上一章的开头">
+            <keyboard-shortcut keymap="$default" first-keystroke="control alt shift COMMA"/>
+            <add-to-group group-id="NovelReader.MenuItems" anchor="last"/>
+        </action>
+
+        <action id="NovelReader.ChapterList"
+                class="com.novelreader.action.ShowChapterListAction"
+                icon="/icons/act-toc.svg"
+                text="章节目录"
+                description="打开章节目录，可搜索并跳转到任意章节">
+            <keyboard-shortcut keymap="$default" first-keystroke="control alt shift L"/>
+            <add-to-group group-id="NovelReader.MenuItems" anchor="last"/>
+        </action>
+
+        <!-- 书签：主动标记「想回头看」的位置，与自动记录的阅读历史互补。
+             历史每本书只有一条（上次读到哪），书签一本书可以有很多条。
+
+             快捷键刻意避开默认键位表里已占用的组合（查过 lib 里的 keymaps/$default.xml）：
+             Ctrl+Alt+B 是「跳转到实现」、Ctrl+Alt+M 是「提取方法」，都是高频键，不抢。
+             这里用 Ctrl+Alt+Shift+M（M = Mark）与 Ctrl+Alt+Shift+B（B = Bookmarks）。 -->
+        <action id="NovelReader.AddBookmark"
+                class="com.novelreader.action.AddBookmarkAction"
+                icon="/icons/act-add-bookmark.svg"
+                text="添加书签"
+                description="把当前读到的一段存为书签，可附一句备注">
+            <keyboard-shortcut keymap="$default" first-keystroke="control alt shift M"/>
+            <add-to-group group-id="NovelReader.MenuItems" anchor="last"/>
+        </action>
+
+        <action id="NovelReader.Bookmarks"
+                class="com.novelreader.action.ShowBookmarksAction"
+                icon="/icons/act-bookmarks.svg"
+                text="书签列表"
+                description="查看当前这本书的书签，可跳转或删除">
+            <keyboard-shortcut keymap="$default" first-keystroke="control alt shift B"/>
+            <add-to-group group-id="NovelReader.MenuItems" anchor="last"/>
+        </action>
+
+        <!-- 离线缓存：把当前这本书整本抓到本地，之后断网也能接着读。
+             阅读时已读过的章节也会自动缓存，这个动作是给「提前把书下下来」用的。
+             Ctrl+Alt+Shift+D（D = Download），已确认不与默认键位表冲突。 -->
+        <action id="NovelReader.CacheWholeBook"
+                class="com.novelreader.action.CacheWholeBookAction"
+                icon="/icons/act-download.svg"
+                text="缓存整本书"
+                description="把当前这本书的章节抓到本地，之后断网也能继续阅读">
+            <keyboard-shortcut keymap="$default" first-keystroke="control alt shift D"/>
+            <add-to-group group-id="NovelReader.MenuItems" anchor="last"/>
+        </action>
+
+        <!-- 读完后收起当前进度（关闭正文通知）。
+             与上面的浏览动作分开，避免误触。 -->
+        <action id="NovelReader.StopReading"
+                class="com.novelreader.action.StopReadingAction"
+                icon="/icons/act-close.svg"
+                text="关闭阅读"
+                description="结束当前阅读会话，关闭正文通知">
+            <keyboard-shortcut keymap="$default" first-keystroke="control alt shift Q"/>
+            <add-to-group group-id="NovelReader.MenuItems" anchor="last"/>
+        </action>
+
+        <!-- 阅读面板的显示调整：字号与行距各一对，只出现在面板工具栏上。
+             刻意**不进菜单**（菜单已经 11 项够长了），但仍然是正式动作 ——
+             所以它们在 Keymap 里搜得到，想绑快捷键随时可绑。
+             到边界时按钮会自动变灰，不需要"已经最大了"这类提示。 -->
+        <action id="NovelReader.FontSizeUp"
+                class="com.novelreader.action.FontSizeUpAction"
+                icon="/icons/act-font-plus.svg"
+                text="字号增大"
+                description="把阅读面板的正文字号调大一档"/>
+        <action id="NovelReader.FontSizeDown"
+                class="com.novelreader.action.FontSizeDownAction"
+                icon="/icons/act-font-minus.svg"
+                text="字号减小"
+                description="把阅读面板的正文字号调小一档"/>
+        <action id="NovelReader.LineSpacingUp"
+                class="com.novelreader.action.LineSpacingUpAction"
+                icon="/icons/act-leading-plus.svg"
+                text="行距增大"
+                description="把阅读面板的正文行距调松一档"/>
+        <action id="NovelReader.LineSpacingDown"
+                class="com.novelreader.action.LineSpacingDownAction"
+                icon="/icons/act-leading-minus.svg"
+                text="行距减小"
+                description="把阅读面板的正文行距收紧一档"/>
+    </actions>
+</idea-plugin>

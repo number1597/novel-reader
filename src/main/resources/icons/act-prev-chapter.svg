@@ -1,0 +1,7 @@
+<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+  <!-- 上一章：实心三角 + 竖线（播放器的「上一曲」隐喻）。
+       实心三角 + 竖线，与「上一页」的细折角箭头在形状上完全不同。 -->
+  <path d="M12.8 3.6 6.6 8l6.2 4.4z" fill="#6E7B8B"/>
+  <path d="M3.7 3.4v9.2" fill="none" stroke="#6E7B8B"
+        stroke-width="1.6" stroke-linecap="round"/>
+</svg>

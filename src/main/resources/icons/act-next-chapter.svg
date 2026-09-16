@@ -1,0 +1,6 @@
+<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+  <!-- 下一章：实心三角 + 竖线（上一章的镜像）。 -->
+  <path d="M3.2 3.6 9.4 8l-6.2 4.4z" fill="#6E7B8B"/>
+  <path d="M12.3 3.4v9.2" fill="none" stroke="#6E7B8B"
+        stroke-width="1.6" stroke-linecap="round"/>
+</svg>

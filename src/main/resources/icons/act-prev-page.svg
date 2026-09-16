@@ -1,0 +1,6 @@
+<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+  <!-- 上一页：单个左向折角箭头。与「上一章」的差别是「单箭头 vs 箭头+竖线」，
+       一眼能分出「翻一段」与「换一章」。 -->
+  <path d="M10.2 3.4 5.8 8l4.4 4.6" fill="none" stroke="#6E7B8B"
+        stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

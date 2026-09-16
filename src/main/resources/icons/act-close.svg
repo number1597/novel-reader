@@ -1,0 +1,5 @@
+<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+  <!-- 关闭阅读：叉号，与其它圆形/箭头图标完全不同。 -->
+  <path d="M4.4 4.4 11.6 11.6M11.6 4.4 4.4 11.6" fill="none" stroke="#6E7B8B"
+        stroke-width="1.6" stroke-linecap="round"/>
+</svg>

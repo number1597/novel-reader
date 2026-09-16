@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "ruleName": "天籁小说网 tlxsbook.com",
+      "enabled": true,
+      "exampleUrl": "https://www.tlxsbook.com/255_255330/",
+
+      // siteMatch: host=域名匹配（含子域名 www / m）/ url_contains=URL 包含子串 / regex=正则
+      "siteMatch": { "type": "host", "pattern": "tlxsbook.com" },
+
+      // 站点是 GBK 编码，显式指定可避免乱码；若换站点可改回 "auto"
+      "encoding": "GBK",
+
+      // 留空则使用内置浏览器 User-Agent
+      "userAgent": "",
+
+      // 目录页：整个章节列表在 #list 里的 <dl> 中，每条章节是一个 <dd><a>
+      "toc": {
+        "containerSelector": "#list dl",
+        "linkSelector": "dd a"
+      },
+
+      // 正文页：#content 即正文容器，标题在 .bookname h1
+      "content": {
+        "titleSelector": ".bookname h1",
+        "bodySelector": "#content",
+        // 正文末尾有一行「本文链接: URL」，是「文本 + <a>」混合结构，
+        // jsoup 只能删 <a> 而删不掉文字，所以索性保留（只影响本章最后一段）。
+        "removeSelectors": [
+          "script",
+          "style",
+          "noscript",
+          "iframe",
+          "#content .ad",
+          "#content .bottem1",
+          "#content .bottem2"
+        ]
+      },
+
+      // 本章是否分页：本站目前一章一页，「下一章」不是「下一页」，
+      // 因此靠 nextTextContains 文本匹配，且自动跳过含「章」的链接。
+      "paging": {
+        "nextSelector": "",
+        "nextTextContains": "下一页",
+        "maxPages": 20
+      }
+    }
+  ]
+}
